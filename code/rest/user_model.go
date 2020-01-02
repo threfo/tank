@@ -1,7 +1,7 @@
 package rest
 
 import (
-	"github.com/eyebluecn/tank/code/core"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
 
@@ -28,20 +28,27 @@ const (
 )
 
 type User struct {
-	Base
-	Role           string    `json:"role" gorm:"type:varchar(45)"`
-	Username       string    `json:"username" gorm:"type:varchar(45) not null;unique"`
-	Password       string    `json:"-" gorm:"type:varchar(255)"`
-	AvatarUrl      string    `json:"avatarUrl" gorm:"type:varchar(255)"`
-	LastIp         string    `json:"lastIp" gorm:"type:varchar(128)"`
-	LastTime       time.Time `json:"lastTime" gorm:"type:timestamp not null;default:'2018-01-01 00:00:00'"`
-	SizeLimit      int64     `json:"sizeLimit" gorm:"type:bigint(20) not null;default:-1"`
-	TotalSizeLimit int64     `json:"totalSizeLimit" gorm:"type:bigint(20) not null;default:-1"`
-	TotalSize      int64     `json:"totalSize" gorm:"type:bigint(20) not null;default:0"`
-	Status         string    `json:"status" gorm:"type:varchar(45)"`
+	Username   string             `json:"username" bson:"name"`
+	Password   string             `json:"-" bson:"password"`
+	Mobile     string             `json:"mobile" bson:"mobile"`
+	Id_        primitive.ObjectID `json:"id" bson:"_id"`
+	UpdateTime time.Time          `json:"updateTime" bson:"_updated"`
+	CreateTime time.Time          `json:"createTime" bson:"_created"`
+
+	// cloud
+	Uuid           string    `json:"uuid" bson:"uuid"`
+	Sort           int64     `json:"sort" bson:"sort"`
+	Role           string    `json:"role" bson:"role"`
+	AvatarUrl      string    `json:"avatarUrl" bson:"avatar_url"`
+	LastIp         string    `json:"lastIp" bson:"last_ip"`
+	LastTime       time.Time `json:"lastTime" bson:"last_time"`
+	SizeLimit      int64     `json:"sizeLimit" bson:"size_limit"`
+	TotalSizeLimit int64     `json:"totalSizeLimit" bson:"total_size_limit"`
+	TotalSize      int64     `json:"totalSize" bson:"total_size"`
+	Status         string    `json:"status" bson:"status"`
 }
 
 // set User's table name to be `profiles`
 func (this *User) TableName() string {
-	return core.TABLE_PREFIX + "user"
+	return "user"
 }

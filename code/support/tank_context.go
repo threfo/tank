@@ -1,19 +1,24 @@
 package support
 
 import (
-	"github.com/eyebluecn/tank/code/core"
-	"github.com/eyebluecn/tank/code/rest"
-	"github.com/eyebluecn/tank/code/tool/cache"
-	"github.com/jinzhu/gorm"
+	"context"
 	"net/http"
 	"reflect"
+
+	"github.com/eyebluecn/tank/code/core"
+	"github.com/eyebluecn/tank/code/rest"
+	"github.com/jinzhu/gorm"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type TankContext struct {
 	//db connection
 	db *gorm.DB
+	//mongodb connection
+	mdb *mongo.Database
 	//session cache
-	SessionCache *cache.Table
+	// SessionCache *cache.Table
 	//bean map.
 	BeanMap map[string]core.Bean
 	//controller map
@@ -25,7 +30,7 @@ type TankContext struct {
 func (this *TankContext) Init() {
 
 	//create session cache
-	this.SessionCache = cache.NewTable()
+	// this.SessionCache = cache.NewTable()
 
 	//init map
 	this.BeanMap = make(map[string]core.Bean)
@@ -49,9 +54,13 @@ func (this *TankContext) GetDB() *gorm.DB {
 	return this.db
 }
 
-func (this *TankContext) GetSessionCache() *cache.Table {
-	return this.SessionCache
+func (this *TankContext) GetMDB() *mongo.Database {
+	return this.mdb
 }
+
+// func (this *TankContext) GetSessionCache() *cache.Table {
+	// return this.SessionCache
+// }
 
 func (this *TankContext) GetControllerMap() map[string]core.Controller {
 	return this.ControllerMap
@@ -81,12 +90,40 @@ func (this *TankContext) OpenDb() {
 	this.db.LogMode(false)
 }
 
+func (this *TankContext) OpenMDb() {
+
+	var err error = nil
+	opt := options.Client().ApplyURI("mongodb://lwx:lwx00000@116.62.108.233")
+	client, err := mongo.Connect(context.TODO(), opt)
+	if err != nil {
+		core.LOGGER.Panic("failed to connect mongo database")
+	}
+	err = client.Ping(context.TODO(), nil)
+	if err != nil {
+		core.LOGGER.Panic("failed to ping mongo database")
+	}
+	this.mdb = client.Database("hunter_api")
+
+	//whether open the db log. (only true when debug)
+	this.db.LogMode(false)
+}
+
 func (this *TankContext) CloseDb() {
 
 	if this.db != nil {
 		err := this.db.Close()
 		if err != nil {
 			core.LOGGER.Error("occur error when closing db %s", err.Error())
+		}
+	}
+}
+
+func (this *TankContext) CloseMDb() {
+
+	if this.db != nil {
+		err := this.mdb.Client().Disconnect(context.TODO())
+		if err != nil {
+			core.LOGGER.Error("occur error when closing mongodb %s", err.Error())
 		}
 	}
 }
@@ -205,6 +242,7 @@ func (this *TankContext) InstallOk() {
 
 	if core.CONFIG.Installed() {
 		this.OpenDb()
+		this.OpenMDb()
 
 		for _, bean := range this.BeanMap {
 			bean.Bootstrap()
@@ -215,4 +253,5 @@ func (this *TankContext) InstallOk() {
 
 func (this *TankContext) Destroy() {
 	this.CloseDb()
+	this.CloseMDb()
 }

@@ -155,10 +155,10 @@ func (this *TankRouter) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 			//if installed.
 
 			//handler user's auth info.
-			this.userService.PreHandle(writer, request)
-
+			user := this.userService.PreHandle(writer, request)
 			if handler, ok := this.routeMap[path]; ok {
-				handler(writer, request)
+				ctx := this.userService.WithUser(request.Context(), user)
+				handler(writer, request.WithContext(ctx))
 			} else {
 
 				//dispatch the request to controller's handler.

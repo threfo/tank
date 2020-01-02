@@ -1,11 +1,15 @@
 package rest
 
 import (
+	"context"
+	"time"
+
 	"github.com/eyebluecn/tank/code/core"
 	"github.com/eyebluecn/tank/code/tool/builder"
 	"github.com/eyebluecn/tank/code/tool/result"
-	"github.com/nu7hatch/gouuid"
-	"time"
+	uuid "github.com/nu7hatch/gouuid"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type UserDao struct {
@@ -60,14 +64,13 @@ func (this *UserDao) CheckByUuid(uuid string) *User {
 
 func (this *UserDao) FindByUsername(username string) *User {
 
+	var UserColl *mongo.Collection
 	var user = &User{}
-	db := core.CONTEXT.GetDB().Where(&User{Username: username}).First(user)
-	if db.Error != nil {
-		if db.Error.Error() == result.DB_ERROR_NOT_FOUND {
-			return nil
-		} else {
-			panic(db.Error)
-		}
+	UserColl = core.CONTEXT.GetMDB().Collection("user")
+	result := UserColl.FindOne(context.Background(), bson.M{"mobile": username})
+	err := result.Decode(&user)
+	if err != nil {
+		panic(err)
 	}
 	return user
 }
@@ -115,10 +118,15 @@ func (this *UserDao) CountByUsername(username string) int {
 
 func (this *UserDao) Save(user *User) *User {
 
-	user.UpdateTime = time.Now()
-	db := core.CONTEXT.GetDB().
-		Save(user)
-	this.PanicError(db.Error)
+	var UserColl *mongo.Collection
+	UserColl = core.CONTEXT.GetMDB().Collection("user")
+	filter := bson.M{"_id": user.Id_}
+	update := bson.M{"$set": bson.M{"_updated": time.Now()}}
+
+	_, err := UserColl.UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		this.logger.Error(err.Error())
+	}
 	return user
 }
 

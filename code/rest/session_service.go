@@ -25,9 +25,9 @@ func (this *SessionService) Init() {
 }
 
 //System cleanup.
-func (this *SessionService) Cleanup() {
+// func (this *SessionService) Cleanup() {
 
-	this.logger.Info("[SessionService] clean up. Delete all Session. total:%d", core.CONTEXT.GetSessionCache().Count())
+// 	this.logger.Info("[SessionService] clean up. Delete all Session. total:%d", core.CONTEXT.GetSessionCache().Count())
 
-	core.CONTEXT.GetSessionCache().Truncate()
-}
+// 	core.CONTEXT.GetSessionCache().Truncate()
+// }

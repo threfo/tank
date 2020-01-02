@@ -147,6 +147,8 @@ func (this *MatterController) Page(writer http.ResponseWriter, request *http.Req
 
 	} else {
 		//if cannot auth by share. Then login is required.
+		// user := this.checkUser(request)
+		// userUuid = user.Uuid
 		user := this.checkUser(request)
 		userUuid = user.Uuid
 

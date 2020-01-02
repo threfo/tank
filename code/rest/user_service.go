@@ -1,13 +1,16 @@
 package rest
 
 import (
-	"github.com/eyebluecn/tank/code/core"
-	"github.com/eyebluecn/tank/code/tool/cache"
-	"github.com/eyebluecn/tank/code/tool/result"
-	"github.com/eyebluecn/tank/code/tool/util"
-	gouuid "github.com/nu7hatch/gouuid"
+	"context"
 	"net/http"
 	"time"
+
+	"github.com/eyebluecn/tank/code/core"
+	"github.com/eyebluecn/tank/code/tool/cache"
+	"github.com/eyebluecn/tank/code/tool/util"
+	"github.com/eyebluecn/tank/code/tool/result"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 //@Service
@@ -65,96 +68,127 @@ func (this *UserService) MatterUnlock(userUuid string) {
 	}
 }
 
+//load token from request. This method will be invoked in every request.
+//Authorize by 1. is token exists. 2. is token expired.
+func (this *UserService) PreHandle(writer http.ResponseWriter, request *http.Request) *User {
+	var session = &Session{}
+	var user = &User{}
+	var SessionColl *mongo.Collection
+	var UserColl *mongo.Collection
+
+	UserColl = core.CONTEXT.GetMDB().Collection("user")
+	SessionColl = core.CONTEXT.GetMDB().Collection("session")
+	
+	credential := util.GetJwtTokenFromRequest(request)
+	if credential != "" {
+		err := SessionColl.FindOne(context.Background(), bson.M{"token":credential}).Decode(session)
+		if err != nil {
+			this.logger.Error(err.Error())
+		} else {
+			token := util.ParseJwtToken(credential)
+			if token != nil {
+				err := UserColl.FindOne(context.Background(), bson.M{"_id":session.UserId}).Decode(user)
+				if err != nil {
+					this.logger.Error(err.Error())
+				}
+			}
+		}
+	} else {
+		this.logger.Error("jwt credential not found")
+	}
+	return user
+}
+
 //load session to SessionCache. This method will be invoked in every request.
 //authorize by 1. cookie 2. username and password in request form. 3. Basic Auth
-func (this *UserService) PreHandle(writer http.ResponseWriter, request *http.Request) {
+// func (this *UserService) PreHandle(writer http.ResponseWriter, request *http.Request) {
 
-	sessionId := util.GetSessionUuidFromRequest(request, core.COOKIE_AUTH_KEY)
+// 	sessionId := util.GetSessionUuidFromRequest(request, core.COOKIE_AUTH_KEY)
 
-	if sessionId != "" {
+// 	if sessionId != "" {
 
-		cacheItem, err := core.CONTEXT.GetSessionCache().Value(sessionId)
-		if err != nil {
-			this.logger.Error("occur error will get session cache %s", err.Error())
-		}
+// 		cacheItem, err := core.CONTEXT.GetSessionCache().Value(sessionId)
+// 		if err != nil {
+// 			this.logger.Error("occur error will get session cache %s", err.Error())
+// 		}
 
-		//if no cache. try to find in db.
-		if cacheItem == nil || cacheItem.Data() == nil {
-			session := this.sessionDao.FindByUuid(sessionId)
-			if session != nil {
-				duration := session.ExpireTime.Sub(time.Now())
-				if duration <= 0 {
-					this.logger.Error("login info has expired.")
-				} else {
-					user := this.userDao.FindByUuid(session.UserUuid)
-					if user != nil {
-						core.CONTEXT.GetSessionCache().Add(sessionId, duration, user)
-					} else {
-						this.logger.Error("no user with sessionId %s", session.UserUuid)
-					}
-				}
-			}
-		}
-	}
+// 		//if no cache. try to find in db.
+// 		if cacheItem == nil || cacheItem.Data() == nil {
+// 			session := this.sessionDao.FindByUuid(sessionId)
+// 			if session != nil {
+// 				duration := session.ExpireTime.Sub(time.Now())
+// 				if duration <= 0 {
+// 					this.logger.Error("login info has expired.")
+// 				} else {
+// 					user := this.userDao.FindByUuid(session.UserUuid)
+// 					if user != nil {
+// 						core.CONTEXT.GetSessionCache().Add(sessionId, duration, user)
+// 					} else {
+// 						this.logger.Error("no user with sessionId %s", session.UserUuid)
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
 
-	//try to auth by USERNAME_KEY PASSWORD_KEY
-	cacheItem, err := core.CONTEXT.GetSessionCache().Value(sessionId)
-	if err != nil {
-		this.logger.Error("occur error will get session cache %s", err.Error())
-	}
+// 	//try to auth by USERNAME_KEY PASSWORD_KEY
+// 	cacheItem, err := core.CONTEXT.GetSessionCache().Value(sessionId)
+// 	if err != nil {
+// 		this.logger.Error("occur error will get session cache %s", err.Error())
+// 	}
 
-	if cacheItem == nil || cacheItem.Data() == nil {
-		username := request.FormValue(core.USERNAME_KEY)
-		password := request.FormValue(core.PASSWORD_KEY)
+// 	if cacheItem == nil || cacheItem.Data() == nil {
+// 		username := request.FormValue(core.USERNAME_KEY)
+// 		password := request.FormValue(core.PASSWORD_KEY)
 
-		//try to read from BasicAuth
-		if username == "" || password == "" {
-			username, password, _ = request.BasicAuth()
-		}
+// 		//try to read from BasicAuth
+// 		if username == "" || password == "" {
+// 			username, password, _ = request.BasicAuth()
+// 		}
 
-		if username != "" && password != "" {
+// 		if username != "" && password != "" {
 
-			user := this.userDao.FindByUsername(username)
-			if user == nil {
-				this.logger.Error("%s no such user in db.", username)
-			} else {
+// 			user := this.userDao.FindByUsername(username)
+// 			if user == nil {
+// 				this.logger.Error("%s no such user in db.", username)
+// 			} else {
 
-				if !util.MatchBcrypt(password, user.Password) {
-					this.logger.Error("%s password error", username)
-				} else {
+// 				if !util.MatchBcrypt(password, user.Password) {
+// 					this.logger.Error("%s password error", username)
+// 				} else {
 
-					this.logger.Info("load a temp session by username and password.")
-					timeUUID, _ := gouuid.NewV4()
-					uuidStr := string(timeUUID.String())
-					request.Form[core.COOKIE_AUTH_KEY] = []string{uuidStr}
+// 					this.logger.Info("load a temp session by username and password.")
+// 					timeUUID, _ := gouuid.NewV4()
+// 					uuidStr := string(timeUUID.String())
+// 					request.Form[core.COOKIE_AUTH_KEY] = []string{uuidStr}
 
-					core.CONTEXT.GetSessionCache().Add(uuidStr, 10*time.Second, user)
-				}
-			}
+// 					core.CONTEXT.GetSessionCache().Add(uuidStr, 10*time.Second, user)
+// 				}
+// 			}
 
-		}
-	}
+// 		}
+// 	}
 
-}
+// }
 
 //find a cache user by its userUuid
-func (this *UserService) FindCacheUsersByUuid(userUuid string) []*User {
+// func (this *UserService) FindCacheUsersByUuid(userUuid string) []*User {
 
-	var users []*User
-	//let session user work.
-	core.CONTEXT.GetSessionCache().Foreach(func(key interface{}, cacheItem *cache.Item) {
-		if cacheItem == nil || cacheItem.Data() == nil {
-			return
-		}
-		if value, ok := cacheItem.Data().(*User); ok {
-			var user = value
-			if user.Uuid == userUuid {
-				users = append(users, user)
-			}
-		} else {
-			this.logger.Error("cache item not store the *User")
-		}
-	})
+// 	var users []*User
+// 	//let session user work.
+// 	core.CONTEXT.GetSessionCache().Foreach(func(key interface{}, cacheItem *cache.Item) {
+// 		if cacheItem == nil || cacheItem.Data() == nil {
+// 			return
+// 		}
+// 		if value, ok := cacheItem.Data().(*User); ok {
+// 			var user = value
+// 			if user.Uuid == userUuid {
+// 				users = append(users, user)
+// 			}
+// 		} else {
+// 			this.logger.Error("cache item not store the *User")
+// 		}
+// 	})
 
-	return users
-}
+// 	return users
+// }

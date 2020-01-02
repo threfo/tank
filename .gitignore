@@ -1,10 +1,22 @@
 #idea file
-.idea
+.idea/
 
 # develop temp folder.
-tmp
+tmp/
 
 # build execute file
 tank
 tank.exe
+
+# matter
+matter/
+
+# vscode file
+.vscode/
+
+# log
+log/
+
+# conf
+conf/
 

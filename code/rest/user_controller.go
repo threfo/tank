@@ -65,12 +65,8 @@ func (this *UserController) innerLogin(writer http.ResponseWriter, request *http
 
 	//save session to db.
 	session := &Session{
-		UserUuid:   user.Uuid,
-		Ip:         util.GetIpAddress(request),
-		ExpireTime: expiration,
+		UserUuid: user.Uuid,
 	}
-	session.UpdateTime = time.Now()
-	session.CreateTime = time.Now()
 	session = this.sessionDao.Create(session)
 
 	//set cookie
@@ -121,7 +117,8 @@ func (this *UserController) AuthenticationLogin(writer http.ResponseWriter, requ
 	if session == nil {
 		panic(result.BadRequest("authentication error"))
 	}
-	duration := session.ExpireTime.Sub(time.Now())
+	// duration := session.ExpireTime.Sub(time.Now())
+	duration := 1
 	if duration <= 0 {
 		panic(result.BadRequest("login info has expired"))
 	}
@@ -155,11 +152,11 @@ func (this *UserController) Register(writer http.ResponseWriter, request *http.R
 	}
 
 	user := &User{
-		Role:      USER_ROLE_USER,
-		Username:  username,
-		Password:  util.GetBcrypt(password),
+		Role:           USER_ROLE_USER,
+		Username:       username,
+		Password:       util.GetBcrypt(password),
 		TotalSizeLimit: preference.DefaultTotalSizeLimit,
-		Status:    USER_STATUS_OK,
+		Status:         USER_STATUS_OK,
 	}
 
 	user = this.userDao.Create(user)
@@ -304,15 +301,15 @@ func (this *UserController) Logout(writer http.ResponseWriter, request *http.Req
 	user := this.findUser(request)
 	if user != nil {
 		session := this.sessionDao.FindByUuid(sessionId)
-		session.ExpireTime = time.Now()
+		// session.ExpireTime = time.Now()
 		this.sessionDao.Save(session)
 	}
 
 	//delete session.
-	_, err := core.CONTEXT.GetSessionCache().Delete(sessionId)
-	if err != nil {
-		this.logger.Error("error while deleting session.")
-	}
+	// _, err := core.CONTEXT.GetSessionCache().Delete(sessionId)
+	// if err != nil {
+	// 	this.logger.Error("error while deleting session.")
+	// }
 
 	//clear cookie.
 	expiration := time.Now()
@@ -393,11 +390,11 @@ func (this *UserController) ToggleStatus(writer http.ResponseWriter, request *ht
 
 	currentUser = this.userDao.Save(currentUser)
 
-	cacheUsers := this.userService.FindCacheUsersByUuid(currentUser.Uuid)
-	this.logger.Info("find %d cache users", len(cacheUsers))
-	for _, u := range cacheUsers {
-		u.Status = currentUser.Status
-	}
+	// cacheUsers := this.userService.FindCacheUsersByUuid(currentUser.Uuid)
+	// this.logger.Info("find %d cache users", len(cacheUsers))
+	// for _, u := range cacheUsers {
+	// 	u.Status = currentUser.Status
+	// }
 
 	return this.Success(currentUser)
 
@@ -413,9 +410,7 @@ func (this *UserController) Transfiguration(writer http.ResponseWriter, request 
 	expiration = expiration.Add(10 * time.Minute)
 
 	session := &Session{
-		UserUuid:   currentUser.Uuid,
-		Ip:         util.GetIpAddress(request),
-		ExpireTime: expiration,
+		UserUuid: currentUser.Uuid,
 	}
 	session.UpdateTime = time.Now()
 	session.CreateTime = time.Now()

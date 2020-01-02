@@ -1,18 +1,24 @@
 package rest
 
 import (
-	"github.com/eyebluecn/tank/code/core"
 	"time"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Session struct {
-	Base
-	UserUuid   string    `json:"userUuid" gorm:"type:char(36)"`
-	Ip         string    `json:"ip" gorm:"type:varchar(128) not null"`
-	ExpireTime time.Time `json:"expireTime" gorm:"type:timestamp not null;default:'2018-01-01 00:00:00'"`
+	Id_        primitive.ObjectID    `json:"id" bson:"_id"`
+	Uuid       string    `json:"Uuid" bson:"uuid"`
+	UserUuid   string    `json:"userUuid" bson:"user_uuid"`
+	UpdateTime time.Time `json:"updateTime" bson:"_updated"`
+	CreateTime time.Time `json:"createTime" bson:"_created"`
+	Sort       int64     `json:"sort" bson:"sort"`
+	UserId 	   primitive.ObjectID    `json:"userId" bson:"user_id"`
+	ManagerId  primitive.ObjectID	 `josn:"managerId" bson:"manager_id"`
+	Token      string	`json:"token" bson:"token"`
+	UserType   int    `json:"userType" bson:"user_type"`
 }
 
-// set User's table name to be `profiles`
+// set Session's table name to be `session`
 func (this *Session) TableName() string {
-	return core.TABLE_PREFIX + "session"
+	return "session"
 }

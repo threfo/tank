@@ -1,9 +1,10 @@
 package core
 
 import (
-	"github.com/eyebluecn/tank/code/tool/cache"
-	"github.com/jinzhu/gorm"
 	"net/http"
+
+	"github.com/jinzhu/gorm"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type Context interface {
@@ -12,10 +13,13 @@ type Context interface {
 	//get the gorm.DB. all the db connection will use this
 	GetDB() *gorm.DB
 
+	//get the mongo.Db. all the mongodb connection will use this
+	GetMDB() *mongo.Database
+
 	GetBean(bean Bean) Bean
 
 	//get the global session cache
-	GetSessionCache() *cache.Table
+	// GetSessionCache() *cache.Table
 
 	GetControllerMap() map[string]Controller
 
